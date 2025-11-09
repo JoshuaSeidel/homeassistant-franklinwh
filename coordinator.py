@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -85,22 +86,14 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
                     raise UpdateFailed(f"Failed to initialize client: {err}") from err
 
             # Fetch stats
-            stats = await self.client.get_stats()
-
-            if stats is None:
-                raise UpdateFailed("Failed to fetch stats from FranklinWH API")
-
-            # Fetch switch state
-            try:
-                switch_state = await self.client.get_smart_switch_state()
-            except Exception as err:
-                _LOGGER.debug("Failed to fetch switch state: %s", err)
-                switch_state = None
+            functions = [self.client.get_stats, self.client.get_smart_switch_state]
+            tasks = [function() for function in functions]
+            results = await asyncio.gather(*tasks)
 
             # Reset failure counter on success
             self._consecutive_failures = 0
 
-            return FranklinWHData(stats=stats, switch_state=switch_state)
+            return FranklinWHData(stats=results[0], switch_state=results[1])
 
         except AttributeError as err:
             # Handle case where AuthenticationError doesn't exist in franklinwh
