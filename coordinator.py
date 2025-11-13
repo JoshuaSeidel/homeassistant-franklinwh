@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -48,7 +49,6 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
 
         # Store credentials for lazy client initialization
         # Client will be created in executor during first update to avoid blocking
-        self.token_fetcher: TokenFetcher = None  # type: ignore  # noqa: PGH003
         self.client: Client = None  # type: ignore  # noqa: PGH003
         self._client_lock = False
 
@@ -66,7 +66,7 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
             # Only mark unavailable after 3 consecutive failures (3 minutes)
             always_update=False,
         )
-        
+
         # Track consecutive failures
         self._consecutive_failures = 0
         self._max_failures = 3
@@ -78,82 +78,68 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
             if self.client is None and not self._client_lock:
                 self._client_lock = True
                 try:
-
-                    def create_client():
-                        token_fetcher = TokenFetcher(self.username, self.password)
-                        return Client(token_fetcher, self.gateway_id)
-
-                    self.client = await self.hass.async_add_executor_job(create_client)
-                    self.token_fetcher = self.client.fetcher
+                    token_fetcher = TokenFetcher(self.username, self.password)
+                    self.client = Client(token_fetcher, self.gateway_id)
+                    await self.client.refresh_token()
                 except Exception as err:
                     self._client_lock = False
                     raise UpdateFailed(f"Failed to initialize client: {err}") from err
 
             # Fetch stats
-            stats = await self.hass.async_add_executor_job(self.client.get_stats)
-
-            if stats is None:
-                raise UpdateFailed("Failed to fetch stats from FranklinWH API")
-
-            # Fetch switch state
-            try:
-                switch_state = await self.hass.async_add_executor_job(
-                    self.client.get_smart_switch_state
-                )
-            except Exception as err:
-                _LOGGER.debug("Failed to fetch switch state: %s", err)
-                switch_state = None
+            functions = [self.client.get_stats, self.client.get_smart_switch_state]
+            tasks = [function() for function in functions]
+            results = await asyncio.gather(*tasks)
 
             # Reset failure counter on success
             self._consecutive_failures = 0
-            
-            return FranklinWHData(stats=stats, switch_state=switch_state)
+
+            return FranklinWHData(stats=results[0], switch_state=results[1])
 
         except AttributeError as err:
             # Handle case where AuthenticationError doesn't exist in franklinwh
             if "AuthenticationError" in str(type(err)):
                 raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
-            
+
             # Increment failure counter
             self._consecutive_failures += 1
             _LOGGER.warning(
-                "API error (attempt %d/%d): %s", 
-                self._consecutive_failures, 
-                self._max_failures, 
-                err
+                "API error (attempt %d/%d): %s",
+                self._consecutive_failures,
+                self._max_failures,
+                err,
             )
-            
+
             # Only raise UpdateFailed after max failures
             # This keeps entities available with last known data
             if self._consecutive_failures >= self._max_failures:
                 _LOGGER.error("Max consecutive failures reached, marking unavailable")
                 raise UpdateFailed(f"Error communicating with API: {err}") from err
-            
+
             # Return last known data to keep entities available
             if self.data:
                 _LOGGER.debug("Returning last known data due to temporary failure")
                 return self.data
             raise UpdateFailed(f"Error communicating with API: {err}") from err
-            
+
         except Exception as err:
             # Check if it's an authentication-related error
             if "auth" in str(err).lower() or "token" in str(err).lower():
                 raise ConfigEntryAuthFailed(f"Authentication failed: {err}") from err
-            
+
             # Increment failure counter
             self._consecutive_failures += 1
             _LOGGER.warning(
-                "API error (attempt %d/%d): %s", 
-                self._consecutive_failures, 
-                self._max_failures, 
-                err
+                "API error (attempt %d/%d): %s",
+                self._consecutive_failures,
+                self._max_failures,
+                err,
             )
-            
+
             # Only raise UpdateFailed after max failures
             if self._consecutive_failures >= self._max_failures:
                 _LOGGER.error("Max consecutive failures reached, marking unavailable")
                 raise UpdateFailed(f"Error communicating with API: {err}") from err
-            
+
             # Return last known data to keep entities available
             if self.data:
                 _LOGGER.debug("Returning last known data due to temporary failure")
@@ -163,9 +149,7 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
     async def async_set_switch_state(self, switches: tuple[bool, bool, bool]) -> None:
         """Set the state of smart switches."""
         try:
-            await self.hass.async_add_executor_job(
-                self.client.set_smart_switch_state, switches
-            )
+            await self.client.set_smart_switch_state(switches)
             # Request immediate refresh
             await self.async_request_refresh()
         except Exception as err:
