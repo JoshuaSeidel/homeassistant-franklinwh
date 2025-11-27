@@ -96,7 +96,7 @@ SENSOR_TYPES: tuple[FranklinWHSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data.stats.current.grid_use * -1 if data.stats else None,
+        value_fn=lambda data: data.stats.current.grid_use if data.stats else None,
     ),
     FranklinWHSensorEntityDescription(
         key="grid_import",
