@@ -89,17 +89,15 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
                     self._client_lock = False
                     raise UpdateFailed(f"Failed to initialize client: {err}") from err
 
-            # Fetch stats
-            stats = await self.hass.async_add_executor_job(self.client.get_stats)
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async - call directly
+            stats = await self.client.get_stats()
 
             if stats is None:
                 raise UpdateFailed("Failed to fetch stats from FranklinWH API")
 
             # Fetch switch state
             try:
-                switch_state = await self.hass.async_add_executor_job(
-                    self.client.get_smart_switch_state
-                )
+                switch_state = await self.client.get_smart_switch_state()
             except Exception as err:
                 _LOGGER.debug("Failed to fetch switch state: %s", err)
                 switch_state = None
@@ -163,9 +161,8 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
     async def async_set_switch_state(self, switches: tuple[bool, bool, bool]) -> None:
         """Set the state of smart switches."""
         try:
-            await self.hass.async_add_executor_job(
-                self.client.set_smart_switch_state, switches
-            )
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async
+            await self.client.set_smart_switch_state(switches)
             # Request immediate refresh
             await self.async_request_refresh()
         except Exception as err:
@@ -185,8 +182,8 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
             raise UpdateFailed("Client not initialized")
         
         try:
-            # Call set_mode with the Mode object
-            await self.hass.async_add_executor_job(self.client.set_mode, mode)
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async
+            await self.client.set_mode(mode)
             
             _LOGGER.info("Successfully set mode: %s", mode)
             
