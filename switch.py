@@ -31,7 +31,9 @@ async def async_setup_entry(
     entities: list[SwitchEntity] = [GridSwitch(coordinator, entry)]
 
     await coordinator.async_config_entry_first_refresh()
-    accessories = coordinator.client.get_accessories()
+    
+    # ✅ FIX: Library 0.6.0+ made get_accessories async
+    accessories = await coordinator.client.get_accessories()
     _LOGGER.debug("Accessories: %s", accessories)
 
     for accessory in accessories:
@@ -188,7 +190,8 @@ class GridSwitch(CoordinatorEntity[FranklinWHCoordinator], SwitchEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the grid connection on."""
         try:
-            self.coordinator.client.set_grid_status(GridStatus.NORMAL)
+            # ✅ FIX: Library 0.6.0+ made set_grid_status async
+            await self.coordinator.client.set_grid_status(GridStatus.NORMAL)
         except Exception as err:
             _LOGGER.error("Failed to turn on grid connection: %s", err)
             raise
@@ -196,7 +199,8 @@ class GridSwitch(CoordinatorEntity[FranklinWHCoordinator], SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the grid connection off."""
         try:
-            self.coordinator.client.set_grid_status(GridStatus.OFF)
+            # ✅ FIX: Library 0.6.0+ made set_grid_status async
+            await self.coordinator.client.set_grid_status(GridStatus.OFF)
         except Exception as err:
             _LOGGER.error("Failed to turn off grid connection: %s", err)
             raise

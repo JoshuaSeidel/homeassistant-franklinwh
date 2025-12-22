@@ -89,17 +89,15 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
                     self._client_lock = False
                     raise UpdateFailed(f"Failed to initialize client: {err}") from err
 
-            # Fetch stats
-            stats = await self.hass.async_add_executor_job(self.client.get_stats)
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async - call directly
+            stats = await self.client.get_stats()
 
             if stats is None:
                 raise UpdateFailed("Failed to fetch stats from FranklinWH API")
 
             # Fetch switch state
             try:
-                switch_state = await self.hass.async_add_executor_job(
-                    self.client.get_smart_switch_state
-                )
+                switch_state = await self.client.get_smart_switch_state()
             except Exception as err:
                 _LOGGER.debug("Failed to fetch switch state: %s", err)
                 switch_state = None
@@ -163,25 +161,65 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
     async def async_set_switch_state(self, switches: tuple[bool, bool, bool]) -> None:
         """Set the state of smart switches."""
         try:
-            await self.hass.async_add_executor_job(
-                self.client.set_smart_switch_state, switches
-            )
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async
+            await self.client.set_smart_switch_state(switches)
             # Request immediate refresh
             await self.async_request_refresh()
         except Exception as err:
             _LOGGER.error("Failed to set switch state: %s", err)
             raise
 
+    async def async_set_mode_direct(self, mode) -> None:
+        """Set the operation mode using franklinwh.Mode object.
+        
+        This is the j4m3z0r-style implementation that accepts a Mode object
+        directly from the franklinwh library.
+        
+        Args:
+            mode: franklinwh.Mode object (e.g., franklinwh.Mode.self_consumption(20))
+        """
+        if self.client is None:
+            raise UpdateFailed("Client not initialized")
+        
+        try:
+            # ✅ FIX: franklinwh 0.6.0+ methods are now async
+            await self.client.set_mode(mode)
+            
+            _LOGGER.info("Successfully set mode: %s", mode)
+            
+            # Request immediate refresh to update state
+            await self.async_request_refresh()
+            
+        except AttributeError as err:
+            _LOGGER.error(
+                "The franklinwh library does not support set_mode. "
+                "Please update to a version that includes franklinwh.Mode. Error: %s",
+                err
+            )
+            raise NotImplementedError(
+                "set_mode is not available in the current franklinwh library version. "
+                "Update franklinwh-python to a version that includes the Mode class."
+            ) from err
+        except Exception as err:
+            _LOGGER.error("Failed to set mode: %s", err)
+            raise
+
     async def async_set_operation_mode(self, mode: str) -> None:
-        """Set the operation mode of the system."""
-        # This would require API support from franklinwh library
-        # Placeholder for future implementation
-        _LOGGER.warning("Set operation mode not yet implemented in API library")
-        raise NotImplementedError("Operation mode control not yet available")
+        """Set the operation mode of the system.
+        
+        [DEPRECATED] Use async_set_mode_direct with a franklinwh.Mode object instead.
+        """
+        _LOGGER.warning(
+            "async_set_operation_mode is deprecated. Use async_set_mode_direct instead."
+        )
+        raise NotImplementedError("Use the set_mode service instead")
 
     async def async_set_battery_reserve(self, reserve_percent: int) -> None:
-        """Set the battery reserve percentage."""
-        # This would require API support from franklinwh library
-        # Placeholder for future implementation
-        _LOGGER.warning("Set battery reserve not yet implemented in API library")
-        raise NotImplementedError("Battery reserve control not yet available")
+        """Set the battery reserve percentage.
+        
+        [DEPRECATED] Use async_set_mode_direct with a franklinwh.Mode object instead.
+        """
+        _LOGGER.warning(
+            "async_set_battery_reserve is deprecated. Use async_set_mode_direct instead."
+        )
+        raise NotImplementedError("Use the set_mode service instead")
