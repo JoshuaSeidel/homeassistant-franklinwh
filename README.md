@@ -272,7 +272,17 @@ When reporting issues, please:
 
 ## 📋 Changelog
 
-### Version 1.0.9 (Current)
+### Version 1.1.0 (Current)
+- ⬆️ **UPGRADED**: Updated to franklinwh library 1.0.0
+- ✨ **NEW**: Full operation mode control (self_use, backup, time_of_use)
+- ✨ **NEW**: Battery reserve percentage setting
+- ✨ **NEW**: Grid connection switch for monitoring and control
+- ✨ **NEW**: Home Energy Total sensor (total home consumption)
+- 🐛 **FIXED**: Integration now properly works with franklinwh 1.0.0 API
+- ♻️ **IMPROVED**: Updated imports to use properly exported classes
+- 📝 **DOCS**: Updated README to reflect available features
+
+### Version 1.0.9
 - ⬆️ **UPGRADED**: Updated to franklinwh library 1.0.0
 - ✨ **NEW**: Full operation mode control (self_use, backup, time_of_use)
 - ✨ **NEW**: Battery reserve percentage setting
