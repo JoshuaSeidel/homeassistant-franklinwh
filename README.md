@@ -17,14 +17,15 @@ This is a modern custom integration for [Home Assistant](https://www.home-assist
 - ☀️ Solar production and energy generation tracking
 - 🔌 Grid import/export monitoring with totals
 - ⚡ Generator production and energy insights
-- 🏠 Home load power monitoring
+- 🏠 Home load power monitoring and total energy consumption
 - 🔀 Smart circuit switch monitoring (Switches 1-3)
 - 🚗 V2L (Vehicle-to-Load) data support
 
 ### Control
 - 🎛️ Individual smart circuit switch control
-- ⚙️ Operation mode selection (planned)
-- 🔋 Battery reserve setting (planned)
+- ⚙️ Operation mode selection (self_use, backup, time_of_use)
+- 🔋 Battery reserve setting
+- 🌐 Grid connection control
 
 ### Modern Features
 - 🎨 **Config Flow**: Easy setup through the Home Assistant UI
@@ -128,6 +129,7 @@ After setup, all entities will be organized under a single **FranklinWH** device
 | **V2L Use** | Power via Vehicle-to-Load | W |
 | **V2L Import** | Total energy drawn from V2L | kWh |
 | **V2L Export** | Total energy delivered to V2L | kWh |
+| **Home Energy Total** | Total energy consumed by home | kWh |
 
 ### Switches
 
@@ -136,8 +138,7 @@ After setup, all entities will be organized under a single **FranklinWH** device
 | **Switch 1** | Control smart circuit 1 |
 | **Switch 2** | Control smart circuit 2 |
 | **Switch 3** | Control smart circuit 3 |
-
-> 📝 **Note**: Grid Connection switch is not available in franklinwh library 0.4.1. It will be added when a newer library version is published to PyPI.
+| **Grid Connection** | Monitor and control grid connection status |
 
 ---
 
@@ -159,8 +160,6 @@ data:
   mode: self_use
 ```
 
-> ⚠️ **Note**: This service requires API support that may not be available yet. It's a placeholder for future functionality.
-
 ### `franklin_wh.set_battery_reserve`
 
 Set the minimum battery reserve percentage.
@@ -174,8 +173,6 @@ service: franklin_wh.set_battery_reserve
 data:
   reserve_percent: 20
 ```
-
-> ⚠️ **Note**: This service requires API support that may not be available yet. It's a placeholder for future functionality.
 
 ---
 
@@ -275,7 +272,17 @@ When reporting issues, please:
 
 ## 📋 Changelog
 
-### Version 1.0.7 (Current)
+### Version 1.0.9 (Current)
+- ⬆️ **UPGRADED**: Updated to franklinwh library 1.0.0
+- ✨ **NEW**: Full operation mode control (self_use, backup, time_of_use)
+- ✨ **NEW**: Battery reserve percentage setting
+- ✨ **NEW**: Grid connection switch for monitoring and control
+- ✨ **NEW**: Home Energy Total sensor (total home consumption)
+- 🐛 **FIXED**: Integration now properly works with franklinwh 1.0.0 API
+- ♻️ **IMPROVED**: Updated imports to use properly exported classes
+- 📝 **DOCS**: Updated README to reflect available features
+
+### Version 1.0.7
 - 🐛 **CRITICAL FIX**: Removed Grid Connection switch (requires unreleased library version)
 - 🐛 **FIXED**: ImportError for AccessoryType and GridStatus classes
 - 🐛 **FIXED**: Integration now loads successfully with franklinwh 0.4.1
