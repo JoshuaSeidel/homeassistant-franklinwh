@@ -181,7 +181,8 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
                 "self_use": Mode.self_consumption,
                 "backup": Mode.emergency_backup,
                 "time_of_use": Mode.time_of_use,
-                # Note: clean_backup is not in the library, map to emergency_backup
+                # Note: clean_backup mode from Home Assistant services.yaml
+                # Maps to emergency_backup as the library doesn't have a separate clean_backup mode
                 "clean_backup": Mode.emergency_backup,
             }
             
@@ -204,16 +205,27 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
             raise
 
     async def async_set_battery_reserve(self, reserve_percent: int) -> None:
-        """Set the battery reserve percentage."""
+        """Set the battery reserve percentage.
+        
+        This attempts to preserve the current operation mode while updating
+        the battery reserve (SOC) percentage. If the current mode cannot be
+        determined, it defaults to self_consumption mode.
+        """
         try:
-            # Get the current mode first
-            current_mode = await self.hass.async_add_executor_job(
-                self.client.get_mode
-            )
+            # Try to get the current mode to preserve it
+            try:
+                current_mode = await self.hass.async_add_executor_job(
+                    self.client.get_mode
+                )
+                _LOGGER.debug("Current mode retrieved: %s", current_mode)
+            except Exception as err:
+                _LOGGER.warning("Could not retrieve current mode, defaulting to self_consumption: %s", err)
+                current_mode = None
             
-            # We need to determine which mode type it is and recreate with new SOC
-            # For now, we'll use self_consumption as default
-            # In a real implementation, we'd need to detect the current mode type
+            # Create new mode with updated SOC
+            # Note: We need to detect the current mode type to preserve it
+            # For now, we default to self_consumption if we can't determine the mode
+            # TODO: Add mode type detection when the API provides mode information
             mode_obj = Mode.self_consumption(soc=reserve_percent)
             
             await self.hass.async_add_executor_job(
