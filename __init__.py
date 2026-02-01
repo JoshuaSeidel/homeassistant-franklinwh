@@ -70,16 +70,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         mode = call.data.get("mode")
         try:
             await coordinator.async_set_operation_mode(mode)
-        except NotImplementedError:
-            _LOGGER.warning("Operation mode control not yet available in API")
+        except Exception as err:
+            _LOGGER.error("Failed to set operation mode: %s", err)
 
     async def handle_set_battery_reserve(call: ServiceCall) -> None:
         """Handle the set_battery_reserve service call."""
         reserve_percent = call.data.get("reserve_percent")
         try:
             await coordinator.async_set_battery_reserve(reserve_percent)
-        except NotImplementedError:
-            _LOGGER.warning("Battery reserve control not yet available in API")
+        except Exception as err:
+            _LOGGER.error("Failed to set battery reserve: %s", err)
 
     # Register services only once
     if not hass.services.has_service(DOMAIN, SERVICE_SET_OPERATION_MODE):

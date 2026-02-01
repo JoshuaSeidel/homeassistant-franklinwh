@@ -202,6 +202,14 @@ SENSOR_TYPES: tuple[FranklinWHSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         value_fn=lambda data: (data.stats.totals.v2l_import / 1000) if data.stats else None,
     ),
+    FranklinWHSensorEntityDescription(
+        key="home_energy_total",
+        name="Home Energy Total",
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=lambda data: data.stats.totals.home_use if data.stats else None,
+    ),
 )
 
 
