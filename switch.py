@@ -27,7 +27,6 @@ async def async_setup_entry(
     coordinator: FranklinWHCoordinator = hass.data[DOMAIN][entry.entry_id]
     
     await coordinator.async_config_entry_first_refresh()
-    
     # Create 3 smart circuit switches
     # Note: get_accessories() is not available in franklinwh 0.4.1
     # We always create 3 switches as that's the standard configuration
