@@ -264,7 +264,7 @@ class FranklinWHSensorEntity(CoordinatorEntity[FranklinWHCoordinator], SensorEnt
         """Return the state of the sensor."""
         if self.entity_description.value_fn is None:
             return None
-        
+
         try:
             return self.entity_description.value_fn(self.coordinator.data)
         except (AttributeError, TypeError, KeyError) as err:

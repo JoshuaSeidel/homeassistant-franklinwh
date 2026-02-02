@@ -50,6 +50,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Fetch initial data
     try:
         await coordinator.async_config_entry_first_refresh()
+        _LOGGER.debug("FranklinWH initial data fetch complete")
     except ConfigEntryAuthFailed as err:
         _LOGGER.error("Authentication failed: %s", err)
         raise

@@ -90,24 +90,29 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
                     self._client_lock = False
                     raise UpdateFailed(f"Failed to initialize client: {err}") from err
 
-            # Fetch stats
-            stats = await self.hass.async_add_executor_job(self.client.get_stats)
+            # Fetch stats (async method in franklinwh 1.0.0+)
+            stats = await self.client.get_stats()
 
             if stats is None:
                 raise UpdateFailed("Failed to fetch stats from FranklinWH API")
 
-            # Fetch switch state
+            _LOGGER.debug(
+                "Stats fetched - SOC: %s%%, Solar: %skW, Grid: %skW",
+                getattr(stats.current, 'battery_soc', 'N/A') if stats.current else 'N/A',
+                getattr(stats.current, 'solar_production', 'N/A') if stats.current else 'N/A',
+                getattr(stats.current, 'grid_use', 'N/A') if stats.current else 'N/A',
+            )
+
+            # Fetch switch state (async method in franklinwh 1.0.0+)
             try:
-                switch_state = await self.hass.async_add_executor_job(
-                    self.client.get_smart_switch_state
-                )
+                switch_state = await self.client.get_smart_switch_state()
             except Exception as err:
                 _LOGGER.debug("Failed to fetch switch state: %s", err)
                 switch_state = None
 
             # Reset failure counter on success
             self._consecutive_failures = 0
-            
+
             return FranklinWHData(stats=stats, switch_state=switch_state)
 
         except AttributeError as err:
@@ -164,9 +169,8 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
     async def async_set_switch_state(self, switches: tuple[bool, bool, bool]) -> None:
         """Set the state of smart switches."""
         try:
-            await self.hass.async_add_executor_job(
-                self.client.set_smart_switch_state, switches
-            )
+            # Async method in franklinwh 1.0.0+
+            await self.client.set_smart_switch_state(switches)
             # Request immediate refresh
             await self.async_request_refresh()
         except Exception as err:
@@ -193,10 +197,8 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
             # Create mode object with default SOC
             mode_obj = mode_map[mode]()
             
-            # Set the mode via API
-            await self.hass.async_add_executor_job(
-                self.client.set_mode, mode_obj
-            )
+            # Set the mode via API (async method in franklinwh 1.0.0+)
+            await self.client.set_mode(mode_obj)
             
             # Request immediate refresh
             await self.async_request_refresh()
@@ -213,25 +215,22 @@ class FranklinWHCoordinator(DataUpdateCoordinator[FranklinWHData]):
         determined, it defaults to self_consumption mode.
         """
         try:
-            # Try to get the current mode to preserve it
+            # Try to get the current mode to preserve it (async method in franklinwh 1.0.0+)
             try:
-                current_mode = await self.hass.async_add_executor_job(
-                    self.client.get_mode
-                )
+                current_mode = await self.client.get_mode()
                 _LOGGER.debug("Current mode retrieved: %s", current_mode)
             except Exception as err:
                 _LOGGER.warning("Could not retrieve current mode, defaulting to self_consumption: %s", err)
                 current_mode = None
-            
+
             # Create new mode with updated SOC
             # Note: We need to detect the current mode type to preserve it
             # For now, we default to self_consumption if we can't determine the mode
             # TODO: Add mode type detection when the API provides mode information
             mode_obj = Mode.self_consumption(soc=reserve_percent)
-            
-            await self.hass.async_add_executor_job(
-                self.client.set_mode, mode_obj
-            )
+
+            # Async method in franklinwh 1.0.0+
+            await self.client.set_mode(mode_obj)
             
             # Request immediate refresh
             await self.async_request_refresh()
